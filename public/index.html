@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Translator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; display: flex; flex-direction: column; height: 100vh; }
+    #header { background: #075e54; color: white; padding: 12px 16px; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    #header h1 { font-size: 18px; }
+    #add-contact-btn { background: #25d366; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+    #contact-select { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 15px; }
+    #notify-btn { background: #128c7e; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-top: 8px; cursor: pointer; width: 100%; }
+    #notify-status { font-size: 11px; color: #a8d5af; margin-top: 4px; text-align: center; }
+    #chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+    .bubble .original { font-size: 12px; opacity: 0.6; margin-top: 4px; }
+    .bubble .time { font-size: 11px; opacity: 0.5; margin-top: 4px; text-align: right; }
+    .incoming { background: white; align-self: flex-start; border-bottom-left-radius: 2px; }
+    .outgoing { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; }
+    .label { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
+    .incoming .label { color: #075e54; }
+    .outgoing .label { color: #4a7c59; }
+    #footer { background: white; padding: 10px; display: flex; gap: 8px; border-top: 1px solid #ddd; }
+    #message-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; font-size: 15px; outline: none; }
+    #send-btn { background: #075e54; color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+    #send-btn:active { background: #054c44; }
+    .empty { text-align: center; color: #999; margin-top: 40px; font-size: 14px; }
+    .sending { opacity: 0.5; }
+    /* Modal */
+    #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+    #modal-overlay.active { display: flex; }
+    #modal { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; }
+    #modal h2 { font-size: 18px; margin-bottom: 16px; color: #075e54; }
+    #modal input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
+    #modal .hint { font-size: 12px; color: #999; margin-top: -8px; margin-bottom: 12px; }
+    .modal-buttons { display: flex; gap: 8px; }
+    #modal-save { flex: 1; background: #075e54; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    #modal-cancel { flex: 1; background: #f0f0f0; color: #333; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-top">
+    <h1>WhatsApp Translator</h1>
+    <button id="add-contact-btn">+ Add Contact</button>
+  </div>
+  <select id="contact-select">
+    <option value="">-- Select a contact --</option>
+  </select>
+  <button id="notify-btn">Enable Push Notifications</button>
+  <div id="notify-status"></div>
+</div>
+
+<div id="chat">
+  <p class="empty">Select a contact to start translating</p>
+</div>
+
+<div id="footer">
+  <input id="message-input" type="text" placeholder="Type in English..." />
+  <button id="send-btn">&#10148;</button>
+</div>
+
+<!-- Add Contact Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>Add New Contact</h2>
+    <input id="new-name" type="text" placeholder="Contact name (e.g. Juan)" />
+    <input id="new-number" type="tel" placeholder="Phone number (e.g. +15551234567)" />
+    <p class="hint">Include country code. US: +1, Mexico: +52</p>
+    <div class="modal-buttons">
+      <button id="modal-cancel">Cancel</button>
+      <button id="modal-save">Save Contact</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const contactSelect = document.getElementById('contact-select');
+  const chat = document.getElementById('chat');
+  const messageInput = document.getElementById('message-input');
+  const sendBtn = document.getElementById('send-btn');
+  const notifyBtn = document.getElementById('notify-btn');
+  const notifyStatus = document.getElementById('notify-status');
+  const addContactBtn = document.getElementById('add-contact-btn');
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalCancel = document.getElementById('modal-cancel');
+  const modalSave = document.getElementById('modal-save');
+  const newName = document.getElementById('new-name');
+  const newNumber = document.getElementById('new-number');
+
+  let allMessages = [];
+  let lastMessageCount = 0;
+  let selectedNumber = '';
+  let contacts = [];
+  let notificationsEnabled = false;
+  let unreadCounts = {};
+
+  // Modal
+  addContactBtn.addEventListener('click', () => {
+    newName.value = '';
+    newNumber.value = '';
+    modalOverlay.classList.add('active');
+  });
+
+  modalCancel.addEventListener('click', () => {
+    modalOverlay.classList.remove('active');
+  });
+
+  modalSave.addEventListener('click', async () => {
+    const name = newName.value.trim();
+    let number = newNumber.value.trim();
+
+    if (!name || !number) {
+      alert('Please enter both a name and phone number.');
+      return;
+    }
+
+    if (!number.startsWith('+')) {
+      alert('Phone number must start with + and country code.\nExample: +15551234567');
+      return;
+    }
+
+    try {
+      const res = await fetch('/contacts/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, number }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        contacts.push({ name, number });
+        unreadCounts[number] = 0;
+        const opt = document.createElement('option');
+        opt.value = number;
+        opt.textContent = name;
+        contactSelect.appendChild(opt);
+        modalOverlay.classList.remove('active');
+        alert(`${name} added successfully!`);
+      } else {
+        alert('Error saving contact: ' + data.error);
+      }
+    } catch (err) {
+      alert('Error saving contact.');
+    }
+  });
+
+  // Push notifications
+  async function enableNotifications() {
+    if (!('Notification' in window)) {
+      notifyStatus.textContent = 'Notifications not supported on this browser.';
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      notificationsEnabled = true;
+      notifyBtn.style.display = 'none';
+      notifyStatus.textContent = 'Push notifications enabled!';
+    } else {
+      notifyStatus.textContent = 'Notifications blocked. Please allow in browser settings.';
+    }
+  }
+
+  function sendPushNotification(title, body) {
+    if (notificationsEnabled && document.hidden) {
+      new Notification(title, { body });
+    }
+  }
+
+  async function loadContacts() {
+    const res = await fetch('/contacts');
+    contacts = await res.json();
+    contacts.forEach(c => {
+      unreadCounts[c.number] = 0;
+      const opt = document.createElement('option');
+      opt.value = c.number;
+      opt.textContent = c.name;
+      contactSelect.appendChild(opt);
+    });
+  }
+
+  function getContactName(number) {
+    const clean = number.replace('whatsapp:', '');
+    const contact = contacts.find(c => c.number === clean);
+    return contact ? contact.name : number;
+  }
+
+  function updateBadges() {
+    Array.from(contactSelect.options).forEach(opt => {
+      if (!opt.value) return;
+      const count = unreadCounts[opt.value] || 0;
+      const contact = contacts.find(c => c.number === opt.value);
+      if (!contact) return;
+      opt.textContent = count > 0 ? `${contact.name} (${count} new)` : contact.name;
+    });
+  }
+
+  function renderMessages() {
+    if (!selectedNumber) {
+      chat.innerHTML = '<p class="empty">Select a contact to start translating</p>';
+      return;
+    }
+    const filtered = allMessages.filter(msg => {
+      if (msg.direction === 'IN') {
+        return msg.from.replace('whatsapp:', '') === selectedNumber;
+      } else {
+        return msg.to === selectedNumber;
+      }
+    });
+    if (filtered.length === 0) {
+      chat.innerHTML = '<p class="empty">No messages yet with this contact.</p>';
+      return;
+    }
+    chat.innerHTML = '';
+    filtered.forEach(msg => {
+      const div = document.createElement('div');
+      if (msg.direction === 'IN') {
+        const fromName = getContactName(msg.from);
+        div.className = 'bubble incoming';
+        div.innerHTML = `
+          <div class="label">${fromName}</div>
+          <div>${msg.translated}</div>
+          <div class="original">Original: ${msg.original}</div>
+          <div class="time">${msg.time}</div>`;
+      } else {
+        const toName = getContactName(msg.to);
+        div.className = 'bubble outgoing';
+        div.innerHTML = `
+          <div class="label">You → ${toName}</div>
+          <div>${msg.original}</div>
+          <div class="original">Sent in Spanish: ${msg.translated}</div>
+          <div class="time">${msg.time}</div>`;
+      }
+      chat.appendChild(div);
+    });
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  async function loadMessages() {
+    const res = await fetch('/messages');
+    const messages = await res.json();
+    if (messages.length !== lastMessageCount) {
+      const newMessages = messages.slice(lastMessageCount);
+      lastMessageCount = messages.length;
+      allMessages = messages;
+      newMessages.forEach(msg => {
+        if (msg.direction === 'IN') {
+          const senderNumber = msg.from.replace('whatsapp:', '');
+          if (senderNumber !== selectedNumber) {
+            unreadCounts[senderNumber] = (unreadCounts[senderNumber] || 0) + 1;
+            updateBadges();
+          }
+          sendPushNotification(`New message from ${getContactName(msg.from)}`, msg.translated);
+        }
+      });
+      renderMessages();
+    }
+  }
+
+  async function markRead(number) {
+    await fetch('/markread', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number }),
+    });
+    unreadCounts[number] = 0;
+    updateBadges();
+  }
+
+  contactSelect.addEventListener('change', () => {
+    selectedNumber = contactSelect.value;
+    if (selectedNumber) markRead(selectedNumber);
+    renderMessages();
+  });
+
+  notifyBtn.addEventListener('click', enableNotifications);
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  async function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message || !selectedNumber) {
+      alert(!selectedNumber ? 'Please select a contact first.' : 'Please type a message.');
+      return;
+    }
+    messageInput.value = '';
+    sendBtn.disabled = true;
+    sendBtn.classList.add('sending');
+    try {
+      await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: selectedNumber, message }),
+      });
+      await loadMessages();
+      renderMessages();
+    } catch (err) {
+      alert('Error sending message. Is the server running?');
+    }
+    sendBtn.disabled = false;
+    sendBtn.classList.remove('sending');
+  }
+
+  loadContacts();
+  loadMessages();
+  setInterval(loadMessages, 3000);
+</script>
+
+</body>
+</html>
