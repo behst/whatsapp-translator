@@ -76,14 +76,11 @@ app.post('/incoming', async (req, res) => {
   const incomingMessage = req.body.Body;
   const sender = req.body.From;
   const contactName = getContactName(sender);
-
   console.log(`\nINCOMING from ${contactName}`);
   console.log(`Spanish: ${incomingMessage}`);
-
   try {
     const english = await translate(incomingMessage, 'Spanish', 'English');
     console.log(`English: ${english}`);
-
     messageLog.push({
       direction: 'IN',
       from: sender,
@@ -93,40 +90,32 @@ app.post('/incoming', async (req, res) => {
       date: new Date().toLocaleDateString(),
       unread: true,
     });
-
     saveMessages(messageLog);
-
     await twilioClient.messages.create({
       from: process.env.TWILIO_WHATSAPP_NUMBER.replace('whatsapp:', ''),
       to: MY_PERSONAL_NUMBER,
       body: `New message from ${contactName}:\n"${english}"`,
     });
-
   } catch (err) {
     console.error('Error:', err.message);
   }
-
   res.set('Content-Type', 'text/xml');
   res.send('<Response></Response>');
 });
 
 app.post('/send', async (req, res) => {
   const { to, message } = req.body;
-
   try {
     const spanish = await translate(message, 'English', 'Spanish');
     const contactName = getContactName(to);
-
     console.log(`\nOUTGOING to ${contactName}`);
     console.log(`English: ${message}`);
     console.log(`Spanish: ${spanish}`);
-
     await twilioClient.messages.create({
       from: process.env.TWILIO_WHATSAPP_NUMBER,
       to: `whatsapp:${to}`,
       body: spanish,
     });
-
     messageLog.push({
       direction: 'OUT',
       to,
@@ -136,11 +125,8 @@ app.post('/send', async (req, res) => {
       date: new Date().toLocaleDateString(),
       unread: false,
     });
-
     saveMessages(messageLog);
-
     res.json({ success: true, youTyped: message, theySee: spanish });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -175,6 +161,32 @@ app.post('/contacts/add', (req, res) => {
   try {
     const contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
     contacts.push({ name, number });
+    fs.writeFileSync('contacts.json', JSON.stringify(contacts, null, 2));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/contacts/edit', (req, res) => {
+  const { oldNumber, name, number } = req.body;
+  try {
+    const contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
+    const index = contacts.findIndex(c => c.number === oldNumber);
+    if (index === -1) return res.status(404).json({ error: 'Contact not found' });
+    contacts[index] = { name, number };
+    fs.writeFileSync('contacts.json', JSON.stringify(contacts, null, 2));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/contacts/delete', (req, res) => {
+  const { number } = req.body;
+  try {
+    let contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
+    contacts = contacts.filter(c => c.number !== number);
     fs.writeFileSync('contacts.json', JSON.stringify(contacts, null, 2));
     res.json({ success: true });
   } catch (err) {

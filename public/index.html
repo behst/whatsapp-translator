@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Translator</title>
+  <title>Beast Mode Translator</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f0f0f0; display: flex; flex-direction: column; height: 100vh; }
     #header { background: #075e54; color: white; padding: 12px 16px; }
     .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     #header h1 { font-size: 18px; }
+    .header-buttons { display: flex; gap: 8px; }
     #add-contact-btn { background: #25d366; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+    #manage-contacts-btn { background: #128c7e; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
     #contact-select { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 15px; }
-    #notify-btn { background: #128c7e; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-top: 8px; cursor: pointer; width: 100%; }
-    #notify-status { font-size: 11px; color: #a8d5af; margin-top: 4px; text-align: center; }
     #chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
     .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
     .bubble .original { font-size: 12px; opacity: 0.6; margin-top: 4px; }
@@ -29,30 +29,46 @@
     #send-btn:active { background: #054c44; }
     .empty { text-align: center; color: #999; margin-top: 40px; font-size: 14px; }
     .sending { opacity: 0.5; }
-    /* Modal */
-    #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
-    #modal-overlay.active { display: flex; }
-    #modal { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; }
-    #modal h2 { font-size: 18px; margin-bottom: 16px; color: #075e54; }
-    #modal input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
-    #modal .hint { font-size: 12px; color: #999; margin-top: -8px; margin-bottom: 12px; }
+    /* Modal shared styles */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; }
+    .modal h2 { font-size: 18px; margin-bottom: 16px; color: #075e54; }
+    .modal input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
+    .modal .hint { font-size: 12px; color: #999; margin-top: -8px; margin-bottom: 12px; }
     .modal-buttons { display: flex; gap: 8px; }
-    #modal-save { flex: 1; background: #075e54; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
-    #modal-cancel { flex: 1; background: #f0f0f0; color: #333; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .btn-save { flex: 1; background: #075e54; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #f0f0f0; color: #333; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .btn-delete { flex: 1; background: #e74c3c; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    /* Manage contacts screen */
+    #manage-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f0f0; z-index: 200; flex-direction: column; }
+    #manage-screen.active { display: flex; }
+    #manage-header { background: #075e54; color: white; padding: 16px; display: flex; align-items: center; gap: 12px; }
+    #manage-header h2 { font-size: 18px; flex: 1; }
+    #close-manage-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+    #contacts-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .contact-card { background: white; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .contact-info { flex: 1; }
+    .contact-name { font-size: 16px; font-weight: bold; color: #333; }
+    .contact-number { font-size: 13px; color: #888; margin-top: 2px; }
+    .contact-actions { display: flex; gap: 8px; }
+    .btn-edit { background: #128c7e; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .btn-del { background: #e74c3c; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
   </style>
 </head>
 <body>
 
 <div id="header">
   <div class="header-top">
-    <h1>WhatsApp Translator</h1>
-    <button id="add-contact-btn">+ Add Contact</button>
+    <h1>Beast Mode Translator</h1>
+    <div class="header-buttons">
+      <button id="manage-contacts-btn">Manage</button>
+      <button id="add-contact-btn">+ Add</button>
+    </div>
   </div>
   <select id="contact-select">
     <option value="">-- Select a contact --</option>
   </select>
-  <button id="notify-btn">Enable Push Notifications</button>
-  <div id="notify-status"></div>
 </div>
 
 <div id="chat">
@@ -65,17 +81,40 @@
 </div>
 
 <!-- Add Contact Modal -->
-<div id="modal-overlay">
-  <div id="modal">
+<div id="add-modal" class="modal-overlay">
+  <div class="modal">
     <h2>Add New Contact</h2>
     <input id="new-name" type="text" placeholder="Contact name (e.g. Juan)" />
     <input id="new-number" type="tel" placeholder="Phone number (e.g. +15551234567)" />
     <p class="hint">Include country code. US: +1, Mexico: +52</p>
     <div class="modal-buttons">
-      <button id="modal-cancel">Cancel</button>
-      <button id="modal-save">Save Contact</button>
+      <button class="btn-cancel" id="add-cancel">Cancel</button>
+      <button class="btn-save" id="add-save">Save Contact</button>
     </div>
   </div>
+</div>
+
+<!-- Edit Contact Modal -->
+<div id="edit-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Edit Contact</h2>
+    <input id="edit-name" type="text" placeholder="Contact name" />
+    <input id="edit-number" type="tel" placeholder="Phone number" />
+    <p class="hint">Include country code. US: +1, Mexico: +52</p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" id="edit-cancel">Cancel</button>
+      <button class="btn-save" id="edit-save">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Contacts Screen -->
+<div id="manage-screen">
+  <div id="manage-header">
+    <button id="close-manage-btn">&#8592;</button>
+    <h2>Manage Contacts</h2>
+  </div>
+  <div id="contacts-list"></div>
 </div>
 
 <script>
@@ -83,103 +122,39 @@
   const chat = document.getElementById('chat');
   const messageInput = document.getElementById('message-input');
   const sendBtn = document.getElementById('send-btn');
-  const notifyBtn = document.getElementById('notify-btn');
-  const notifyStatus = document.getElementById('notify-status');
   const addContactBtn = document.getElementById('add-contact-btn');
-  const modalOverlay = document.getElementById('modal-overlay');
-  const modalCancel = document.getElementById('modal-cancel');
-  const modalSave = document.getElementById('modal-save');
-  const newName = document.getElementById('new-name');
-  const newNumber = document.getElementById('new-number');
+  const manageContactsBtn = document.getElementById('manage-contacts-btn');
+  const addModal = document.getElementById('add-modal');
+  const editModal = document.getElementById('edit-modal');
+  const manageScreen = document.getElementById('manage-screen');
+  const contactsList = document.getElementById('contacts-list');
 
   let allMessages = [];
   let lastMessageCount = 0;
   let selectedNumber = '';
   let contacts = [];
-  let notificationsEnabled = false;
   let unreadCounts = {};
+  let editingOldNumber = '';
 
-  // Modal
-  addContactBtn.addEventListener('click', () => {
-    newName.value = '';
-    newNumber.value = '';
-    modalOverlay.classList.add('active');
-  });
-
-  modalCancel.addEventListener('click', () => {
-    modalOverlay.classList.remove('active');
-  });
-
-  modalSave.addEventListener('click', async () => {
-    const name = newName.value.trim();
-    let number = newNumber.value.trim();
-
-    if (!name || !number) {
-      alert('Please enter both a name and phone number.');
-      return;
-    }
-
-    if (!number.startsWith('+')) {
-      alert('Phone number must start with + and country code.\nExample: +15551234567');
-      return;
-    }
-
-    try {
-      const res = await fetch('/contacts/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, number }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        contacts.push({ name, number });
-        unreadCounts[number] = 0;
-        const opt = document.createElement('option');
-        opt.value = number;
-        opt.textContent = name;
-        contactSelect.appendChild(opt);
-        modalOverlay.classList.remove('active');
-        alert(`${name} added successfully!`);
-      } else {
-        alert('Error saving contact: ' + data.error);
-      }
-    } catch (err) {
-      alert('Error saving contact.');
-    }
-  });
-
-  // Push notifications
-  async function enableNotifications() {
-    if (!('Notification' in window)) {
-      notifyStatus.textContent = 'Notifications not supported on this browser.';
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      notificationsEnabled = true;
-      notifyBtn.style.display = 'none';
-      notifyStatus.textContent = 'Push notifications enabled!';
-    } else {
-      notifyStatus.textContent = 'Notifications blocked. Please allow in browser settings.';
-    }
-  }
-
-  function sendPushNotification(title, body) {
-    if (notificationsEnabled && document.hidden) {
-      new Notification(title, { body });
-    }
-  }
-
+  // ── Contacts ──────────────────────────────────────────────
   async function loadContacts() {
     const res = await fetch('/contacts');
     contacts = await res.json();
+    rebuildDropdown();
+  }
+
+  function rebuildDropdown() {
+    const current = selectedNumber;
+    contactSelect.innerHTML = '<option value="">-- Select a contact --</option>';
     contacts.forEach(c => {
-      unreadCounts[c.number] = 0;
+      if (!unreadCounts[c.number]) unreadCounts[c.number] = 0;
       const opt = document.createElement('option');
       opt.value = c.number;
-      opt.textContent = c.name;
+      const count = unreadCounts[c.number] || 0;
+      opt.textContent = count > 0 ? `${c.name} (${count} new)` : c.name;
       contactSelect.appendChild(opt);
     });
+    if (current) contactSelect.value = current;
   }
 
   function getContactName(number) {
@@ -188,27 +163,115 @@
     return contact ? contact.name : number;
   }
 
-  function updateBadges() {
-    Array.from(contactSelect.options).forEach(opt => {
-      if (!opt.value) return;
-      const count = unreadCounts[opt.value] || 0;
-      const contact = contacts.find(c => c.number === opt.value);
-      if (!contact) return;
-      opt.textContent = count > 0 ? `${contact.name} (${count} new)` : contact.name;
+  function renderContactsList() {
+    contactsList.innerHTML = '';
+    if (contacts.length === 0) {
+      contactsList.innerHTML = '<p style="text-align:center;color:#999;margin-top:40px">No contacts yet. Tap + Add to add one.</p>';
+      return;
+    }
+    contacts.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'contact-card';
+      card.innerHTML = `
+        <div class="contact-info">
+          <div class="contact-name">${c.name}</div>
+          <div class="contact-number">${c.number}</div>
+        </div>
+        <div class="contact-actions">
+          <button class="btn-edit" onclick="openEdit('${c.name}', '${c.number}')">Edit</button>
+          <button class="btn-del" onclick="deleteContact('${c.number}', '${c.name}')">Delete</button>
+        </div>`;
+      contactsList.appendChild(card);
     });
   }
 
+  // ── Add Contact ───────────────────────────────────────────
+  addContactBtn.addEventListener('click', () => {
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-number').value = '';
+    addModal.classList.add('active');
+  });
+  document.getElementById('add-cancel').addEventListener('click', () => addModal.classList.remove('active'));
+  document.getElementById('add-save').addEventListener('click', async () => {
+    const name = document.getElementById('new-name').value.trim();
+    const number = document.getElementById('new-number').value.trim();
+    if (!name || !number) { alert('Please enter both a name and phone number.'); return; }
+    if (!number.startsWith('+')) { alert('Phone number must start with + and country code.'); return; }
+    const res = await fetch('/contacts/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, number })
+    });
+    const data = await res.json();
+    if (data.success) {
+      contacts.push({ name, number });
+      unreadCounts[number] = 0;
+      rebuildDropdown();
+      renderContactsList();
+      addModal.classList.remove('active');
+    } else { alert('Error saving contact.'); }
+  });
+
+  // ── Edit Contact ──────────────────────────────────────────
+  function openEdit(name, number) {
+    editingOldNumber = number;
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-number').value = number;
+    editModal.classList.add('active');
+  }
+  document.getElementById('edit-cancel').addEventListener('click', () => editModal.classList.remove('active'));
+  document.getElementById('edit-save').addEventListener('click', async () => {
+    const name = document.getElementById('edit-name').value.trim();
+    const number = document.getElementById('edit-number').value.trim();
+    if (!name || !number) { alert('Please enter both a name and phone number.'); return; }
+    const res = await fetch('/contacts/edit', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldNumber: editingOldNumber, name, number })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const index = contacts.findIndex(c => c.number === editingOldNumber);
+      if (index !== -1) contacts[index] = { name, number };
+      rebuildDropdown();
+      renderContactsList();
+      editModal.classList.remove('active');
+    } else { alert('Error updating contact.'); }
+  });
+
+  // ── Delete Contact ────────────────────────────────────────
+  async function deleteContact(number, name) {
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+    const res = await fetch('/contacts/delete', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number })
+    });
+    const data = await res.json();
+    if (data.success) {
+      contacts = contacts.filter(c => c.number !== number);
+      if (selectedNumber === number) selectedNumber = '';
+      rebuildDropdown();
+      renderContactsList();
+      renderMessages();
+    } else { alert('Error deleting contact.'); }
+  }
+
+  // ── Manage Screen ─────────────────────────────────────────
+  manageContactsBtn.addEventListener('click', () => {
+    renderContactsList();
+    manageScreen.classList.add('active');
+  });
+  document.getElementById('close-manage-btn').addEventListener('click', () => {
+    manageScreen.classList.remove('active');
+  });
+
+  // ── Messages ──────────────────────────────────────────────
   function renderMessages() {
     if (!selectedNumber) {
       chat.innerHTML = '<p class="empty">Select a contact to start translating</p>';
       return;
     }
     const filtered = allMessages.filter(msg => {
-      if (msg.direction === 'IN') {
-        return msg.from.replace('whatsapp:', '') === selectedNumber;
-      } else {
-        return msg.to === selectedNumber;
-      }
+      if (msg.direction === 'IN') return msg.from.replace('whatsapp:', '') === selectedNumber;
+      return msg.to === selectedNumber;
     });
     if (filtered.length === 0) {
       chat.innerHTML = '<p class="empty">No messages yet with this contact.</p>';
@@ -218,18 +281,16 @@
     filtered.forEach(msg => {
       const div = document.createElement('div');
       if (msg.direction === 'IN') {
-        const fromName = getContactName(msg.from);
         div.className = 'bubble incoming';
         div.innerHTML = `
-          <div class="label">${fromName}</div>
+          <div class="label">${getContactName(msg.from)}</div>
           <div>${msg.translated}</div>
           <div class="original">Original: ${msg.original}</div>
           <div class="time">${msg.time}</div>`;
       } else {
-        const toName = getContactName(msg.to);
         div.className = 'bubble outgoing';
         div.innerHTML = `
-          <div class="label">You → ${toName}</div>
+          <div class="label">You → ${getContactName(msg.to)}</div>
           <div>${msg.original}</div>
           <div class="original">Sent in Spanish: ${msg.translated}</div>
           <div class="time">${msg.time}</div>`;
@@ -243,17 +304,16 @@
     const res = await fetch('/messages');
     const messages = await res.json();
     if (messages.length !== lastMessageCount) {
-      const newMessages = messages.slice(lastMessageCount);
+      const newMsgs = messages.slice(lastMessageCount);
       lastMessageCount = messages.length;
       allMessages = messages;
-      newMessages.forEach(msg => {
+      newMsgs.forEach(msg => {
         if (msg.direction === 'IN') {
-          const senderNumber = msg.from.replace('whatsapp:', '');
-          if (senderNumber !== selectedNumber) {
-            unreadCounts[senderNumber] = (unreadCounts[senderNumber] || 0) + 1;
-            updateBadges();
+          const num = msg.from.replace('whatsapp:', '');
+          if (num !== selectedNumber) {
+            unreadCounts[num] = (unreadCounts[num] || 0) + 1;
+            rebuildDropdown();
           }
-          sendPushNotification(`New message from ${getContactName(msg.from)}`, msg.translated);
         }
       });
       renderMessages();
@@ -262,12 +322,11 @@
 
   async function markRead(number) {
     await fetch('/markread', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number })
     });
     unreadCounts[number] = 0;
-    updateBadges();
+    rebuildDropdown();
   }
 
   contactSelect.addEventListener('change', () => {
@@ -276,11 +335,9 @@
     renderMessages();
   });
 
-  notifyBtn.addEventListener('click', enableNotifications);
+  // ── Send ──────────────────────────────────────────────────
   sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendMessage();
-  });
+  messageInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
 
   async function sendMessage() {
     const message = messageInput.value.trim();
@@ -293,12 +350,10 @@
     sendBtn.classList.add('sending');
     try {
       await fetch('/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: selectedNumber, message }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: selectedNumber, message })
       });
       await loadMessages();
-      renderMessages();
     } catch (err) {
       alert('Error sending message. Is the server running?');
     }
@@ -310,6 +365,5 @@
   loadMessages();
   setInterval(loadMessages, 3000);
 </script>
-
 </body>
 </html>
