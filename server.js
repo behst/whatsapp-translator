@@ -76,7 +76,35 @@ app.post('/incoming', async (req, res) => {
   const incomingMessage = req.body.Body;
   const sender = req.body.From;
   const contactName = getContactName(sender);
+  const keyword = incomingMessage.trim().toUpperCase();
+
   console.log(`\nINCOMING from ${contactName}`);
+
+  // Handle opt-in keywords
+  if (keyword === 'START' || keyword === 'UNSTOP' || keyword === 'YES') {
+    console.log(`Opt-in keyword received from ${sender}`);
+    res.set('Content-Type', 'text/xml');
+    res.send('<Response><Message>Ironstone Contracting: You are now opted in to receive business messages. Reply HELP for help. Reply STOP to unsubscribe. Msg and data rates may apply.</Message></Response>');
+    return;
+  }
+
+  // Handle opt-out keywords
+  if (keyword === 'STOP' || keyword === 'STOPALL' || keyword === 'CANCEL' || keyword === 'END' || keyword === 'QUIT' || keyword === 'UNSUBSCRIBE') {
+    console.log(`Opt-out keyword received from ${sender}`);
+    res.set('Content-Type', 'text/xml');
+    res.send('<Response><Message>Ironstone Contracting: You have been unsubscribed and will receive no further messages. Reply START to resubscribe.</Message></Response>');
+    return;
+  }
+
+  // Handle help keywords
+  if (keyword === 'HELP' || keyword === 'INFO') {
+    console.log(`Help keyword received from ${sender}`);
+    res.set('Content-Type', 'text/xml');
+    res.send('<Response><Message>Ironstone Contracting: For assistance contact us directly. Reply STOP to unsubscribe. Msg and data rates may apply.</Message></Response>');
+    return;
+  }
+
+  // Handle regular Spanish incoming messages
   console.log(`Spanish: ${incomingMessage}`);
   try {
     const english = await translate(incomingMessage, 'Spanish', 'English');
@@ -92,7 +120,7 @@ app.post('/incoming', async (req, res) => {
     });
     saveMessages(messageLog);
     await twilioClient.messages.create({
-      from: process.env.TWILIO_WHATSAPP_NUMBER.replace('whatsapp:', ''),
+      from: process.env.TWILIO_SMS_NUMBER,
       to: MY_PERSONAL_NUMBER,
       body: `New message from ${contactName}:\n"${english}"`,
     });
@@ -112,8 +140,8 @@ app.post('/send', async (req, res) => {
     console.log(`English: ${message}`);
     console.log(`Spanish: ${spanish}`);
     await twilioClient.messages.create({
-      from: process.env.TWILIO_WHATSAPP_NUMBER,
-      to: `whatsapp:${to}`,
+      from: process.env.TWILIO_SMS_NUMBER,
+      to: to,
       body: spanish,
     });
     messageLog.push({
