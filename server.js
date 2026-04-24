@@ -84,7 +84,7 @@ app.post('/incoming', async (req, res) => {
   if (keyword === 'START' || keyword === 'UNSTOP' || keyword === 'YES') {
     console.log(`Opt-in keyword received from ${sender}`);
     res.set('Content-Type', 'text/xml');
-    res.send('<Response><Message>Ironstone Contracting: You are now opted in to receive business messages. Reply HELP for help. Reply STOP to unsubscribe. Msg and data rates may apply.</Message></Response>');
+    res.send('<Response><Message>You have successfully been re-subscribed to messages from this number. I agree to receive text messages from Ironstone Contracting. Reply HELP for help. Reply STOP to unsubscribe. Msg&amp;Data Rates May Apply.</Message></Response>');
     return;
   }
 
@@ -100,7 +100,7 @@ app.post('/incoming', async (req, res) => {
   if (keyword === 'HELP' || keyword === 'INFO') {
     console.log(`Help keyword received from ${sender}`);
     res.set('Content-Type', 'text/xml');
-    res.send('<Response><Message>Ironstone Contracting: For assistance contact us directly. Reply STOP to unsubscribe. Msg and data rates may apply.</Message></Response>');
+    res.send('<Response><Message>Ironstone Contracting: For assistance contact us directly. Reply STOP to unsubscribe. Msg&amp;Data Rates May Apply.</Message></Response>');
     return;
   }
 
