@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const twilio = require('twilio');
 const Anthropic = require('@anthropic-ai/sdk');
-const fs = require('fs');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
@@ -19,41 +19,15 @@ const anthropic = new Anthropic({
 });
 
 const MY_PERSONAL_NUMBER = process.env.MY_PERSONAL_NUMBER;
-const MESSAGES_FILE = 'messages.json';
+const MONGODB_URI = process.env.MONGODB_URI;
 
-function loadMessages() {
-  try {
-    if (fs.existsSync(MESSAGES_FILE)) {
-      const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
-      const parsed = JSON.parse(data);
-      console.log(`Messages loaded: ${parsed.length}`);
-      return parsed;
-    }
-  } catch (e) {
-    console.error('Error loading messages:', e.message);
-  }
-  console.log('Messages loaded: 0');
-  return [];
-}
+let db;
 
-function saveMessages(messages) {
-  try {
-    fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2), 'utf8');
-    console.log(`Saved ${messages.length} messages to file`);
-  } catch (e) {
-    console.error('Error saving messages:', e.message);
-  }
-}
-
-function getContactName(number) {
-  try {
-    const contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
-    const clean = number.replace('whatsapp:', '');
-    const contact = contacts.find(c => c.number === clean);
-    return contact ? contact.name : number;
-  } catch (e) {
-    return number;
-  }
+async function connectDB() {
+  const client = new MongoClient(MONGODB_URI);
+  await client.connect();
+  db = client.db('beastmode');
+  console.log('Connected to MongoDB');
 }
 
 async function translate(text, fromLang, toLang) {
@@ -70,17 +44,13 @@ async function translate(text, fromLang, toLang) {
   return message.content[0].text.trim();
 }
 
-let messageLog = loadMessages();
-
 app.post('/incoming', async (req, res) => {
   const incomingMessage = req.body.Body;
   const sender = req.body.From;
-  const contactName = getContactName(sender);
   const keyword = incomingMessage.trim().toUpperCase();
 
-  console.log(`\nINCOMING from ${contactName}`);
+  console.log(`\nINCOMING from ${sender}`);
 
-  // Handle opt-in keywords
   if (keyword === 'START' || keyword === 'UNSTOP' || keyword === 'YES') {
     console.log(`Opt-in keyword received from ${sender}`);
     res.set('Content-Type', 'text/xml');
@@ -88,7 +58,6 @@ app.post('/incoming', async (req, res) => {
     return;
   }
 
-  // Handle opt-out keywords
   if (keyword === 'STOP' || keyword === 'STOPALL' || keyword === 'CANCEL' || keyword === 'END' || keyword === 'QUIT' || keyword === 'UNSUBSCRIBE') {
     console.log(`Opt-out keyword received from ${sender}`);
     res.set('Content-Type', 'text/xml');
@@ -96,7 +65,6 @@ app.post('/incoming', async (req, res) => {
     return;
   }
 
-  // Handle help keywords
   if (keyword === 'HELP' || keyword === 'INFO') {
     console.log(`Help keyword received from ${sender}`);
     res.set('Content-Type', 'text/xml');
@@ -104,12 +72,17 @@ app.post('/incoming', async (req, res) => {
     return;
   }
 
-  // Handle regular Spanish incoming messages
   console.log(`Spanish: ${incomingMessage}`);
   try {
     const english = await translate(incomingMessage, 'Spanish', 'English');
     console.log(`English: ${english}`);
-    messageLog.push({
+
+    const contacts = await db.collection('contacts').find({}).toArray();
+    const clean = sender.replace('whatsapp:', '');
+    const contact = contacts.find(c => c.number === clean);
+    const contactName = contact ? contact.name : sender;
+
+    await db.collection('messages').insertOne({
       direction: 'IN',
       from: sender,
       original: incomingMessage,
@@ -117,8 +90,9 @@ app.post('/incoming', async (req, res) => {
       time: new Date().toLocaleTimeString(),
       date: new Date().toLocaleDateString(),
       unread: true,
+      createdAt: new Date()
     });
-    saveMessages(messageLog);
+
     await twilioClient.messages.create({
       from: process.env.TWILIO_SMS_NUMBER,
       to: MY_PERSONAL_NUMBER,
@@ -135,16 +109,22 @@ app.post('/send', async (req, res) => {
   const { to, message } = req.body;
   try {
     const spanish = await translate(message, 'English', 'Spanish');
-    const contactName = getContactName(to);
+
+    const contacts = await db.collection('contacts').find({}).toArray();
+    const contact = contacts.find(c => c.number === to);
+    const contactName = contact ? contact.name : to;
+
     console.log(`\nOUTGOING to ${contactName}`);
     console.log(`English: ${message}`);
     console.log(`Spanish: ${spanish}`);
+
     await twilioClient.messages.create({
       from: process.env.TWILIO_SMS_NUMBER,
       to: to,
       body: spanish,
     });
-    messageLog.push({
+
+    await db.collection('messages').insertOne({
       direction: 'OUT',
       to,
       original: message,
@@ -152,77 +132,63 @@ app.post('/send', async (req, res) => {
       time: new Date().toLocaleTimeString(),
       date: new Date().toLocaleDateString(),
       unread: false,
+      createdAt: new Date()
     });
-    saveMessages(messageLog);
+
     res.json({ success: true, youTyped: message, theySee: spanish });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/messages', (req, res) => {
-  res.json(messageLog);
+app.get('/messages', async (req, res) => {
+  const messages = await db.collection('messages').find({}).sort({ createdAt: 1 }).toArray();
+  res.json(messages);
 });
 
-app.post('/markread', (req, res) => {
+app.post('/markread', async (req, res) => {
   const { number } = req.body;
-  messageLog.forEach(msg => {
-    if (msg.direction === 'IN' && msg.from.replace('whatsapp:', '') === number) {
-      msg.unread = false;
-    }
-  });
-  saveMessages(messageLog);
+  await db.collection('messages').updateMany(
+    { direction: 'IN', from: number, unread: true },
+    { $set: { unread: false } }
+  );
   res.json({ success: true });
 });
 
-app.get('/contacts', (req, res) => {
-  try {
-    const contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
-    res.json(contacts);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/contacts', async (req, res) => {
+  const contacts = await db.collection('contacts').find({}).toArray();
+  res.json(contacts);
 });
 
-app.post('/contacts/add', (req, res) => {
+app.post('/contacts/add', async (req, res) => {
   const { name, number } = req.body;
-  try {
-    const contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
-    contacts.push({ name, number });
-    fs.writeFileSync('contacts.json', JSON.stringify(contacts, null, 2));
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  await db.collection('contacts').insertOne({ name, number, createdAt: new Date() });
+  res.json({ success: true });
 });
 
-app.put('/contacts/edit', (req, res) => {
+app.put('/contacts/edit', async (req, res) => {
   const { oldNumber, name, number } = req.body;
-  try {
-    const contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
-    const index = contacts.findIndex(c => c.number === oldNumber);
-    if (index === -1) return res.status(404).json({ error: 'Contact not found' });
-    contacts[index] = { name, number };
-    fs.writeFileSync('contacts.json', JSON.stringify(contacts, null, 2));
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const result = await db.collection('contacts').updateOne(
+    { number: oldNumber },
+    { $set: { name, number } }
+  );
+  if (result.matchedCount === 0) return res.status(404).json({ error: 'Contact not found' });
+  res.json({ success: true });
 });
 
-app.delete('/contacts/delete', (req, res) => {
+app.delete('/contacts/delete', async (req, res) => {
   const { number } = req.body;
-  try {
-    let contacts = JSON.parse(fs.readFileSync('contacts.json', 'utf8'));
-    contacts = contacts.filter(c => c.number !== number);
-    fs.writeFileSync('contacts.json', JSON.stringify(contacts, null, 2));
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  await db.collection('contacts').deleteOne({ number });
+  res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Translator running on port ${PORT}`);
+
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Beast Mode Translator running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error('Failed to connect to MongoDB:', err);
+  process.exit(1);
 });
