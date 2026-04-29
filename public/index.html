@@ -6,7 +6,8 @@
   <title>Beast Mode Translator</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #f0f0f0; display: flex; flex-direction: column; height: 100%; min-height: 100vh; overflow: hidden; position: fixed; width: 100%; top: 0; left: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; display: flex; flex-direction: column; height: 100dvh; }
     #header { background: #075e54; color: white; padding: 12px 16px; flex-shrink: 0; }
     .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     #header h1 { font-size: 18px; }
@@ -14,7 +15,7 @@
     #add-contact-btn { background: #25d366; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
     #manage-contacts-btn { background: #128c7e; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
     #contact-select { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 15px; }
-    #chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    #chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; -webkit-overflow-scrolling: touch; }
     .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
     .bubble .original { font-size: 12px; opacity: 0.6; margin-top: 4px; }
     .bubble .time { font-size: 11px; opacity: 0.5; margin-top: 4px; text-align: right; }
@@ -133,6 +134,15 @@
   let contacts = [];
   let unreadCounts = {};
   let editingOldNumber = '';
+
+  // Fix viewport height on mobile
+  function setVH() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    document.body.style.height = window.innerHeight + 'px';
+  }
+  setVH();
+  window.addEventListener('resize', setVH);
 
   async function loadContacts() {
     const res = await fetch('/contacts');
