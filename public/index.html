@@ -5,366 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Beast Mode Translator</title>
   <style>
+    :root {
+      --bg-app: #f0f4fa;
+      --bg-card: #ffffff;
+      --bg-header: #185FA5;
+      --bg-header-dark: #0C447C;
+      --bg-bubble-in: #ffffff;
+      --bg-bubble-out: #185FA5;
+      --bg-input-bar: #ffffff;
+      --bg-input: #f0f4fa;
+      --text-primary: #0f1e3d;
+      --text-secondary: #6b7c93;
+      --text-timestamp: #9ab0c8;
+      --text-bubble-out: #ffffff;
+      --text-bubble-out-original: #B5D4F4;
+      --text-bubble-in-translation: #0f1e3d;
+      --text-bubble-in-original: #4a6a93;
+      --border: #ccd9ec;
+      --accent: #378ADD;
+      --accent-dark: #185FA5;
+      --avatar-alt: #0C447C;
+      --row-hover: #f7f9fc;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-app: #0f1e3d;
+        --bg-card: #1a3060;
+        --bg-header: #1a3060;
+        --bg-header-dark: #0a1628;
+        --bg-bubble-in: #1a3060;
+        --bg-bubble-out: #185FA5;
+        --bg-input-bar: #0a1628;
+        --bg-input: #1a3060;
+        --text-primary: #ffffff;
+        --text-secondary: #7a9cc0;
+        --text-timestamp: #4a6a8a;
+        --text-bubble-out: #ffffff;
+        --text-bubble-out-original: #B5D4F4;
+        --text-bubble-in-translation: #ffffff;
+        --text-bubble-in-original: #85B7EB;
+        --border: #243d6a;
+        --accent: #378ADD;
+        --accent-dark: #185FA5;
+        --avatar-alt: #0C447C;
+        --row-hover: #162545;
+      }
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; }
-    body { font-family: Arial, sans-serif; background: #f0f0f0; display: flex; flex-direction: column; height: 100dvh; }
-    #header { background: #075e54; color: white; padding: 12px 16px; flex-shrink: 0; }
-    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    #header h1 { font-size: 18px; }
-    .header-buttons { display: flex; gap: 8px; }
-    #add-contact-btn { background: #25d366; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
-    #manage-contacts-btn { background: #128c7e; color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
-    #contact-select { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 15px; }
-    #chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; -webkit-overflow-scrolling: touch; }
-    .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
-    .bubble .original { font-size: 12px; opacity: 0.6; margin-top: 4px; }
-    .bubble .time { font-size: 11px; opacity: 0.5; margin-top: 4px; text-align: right; }
-    .incoming { background: white; align-self: flex-start; border-bottom-left-radius: 2px; }
-    .outgoing { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; }
-    .label { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
-    .incoming .label { color: #075e54; }
-    .outgoing .label { color: #4a7c59; }
-    #footer { background: white; padding: 10px; display: flex; gap: 8px; border-top: 1px solid #ddd; flex-shrink: 0; }
-    #message-input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; font-size: 15px; outline: none; }
-    #send-btn { background: #075e54; color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; cursor: pointer; flex-shrink: 0; }
-    #send-btn:active { background: #054c44; }
-    .empty { text-align: center; color: #999; margin-top: 40px; font-size: 14px; }
-    .sending { opacity: 0.5; }
+    html { height: 100%; }
+    body { font-family: Arial, sans-serif; background: var(--bg-app); display: flex; flex-direction: column; overflow: hidden; }
+    .view { display: none; flex-direction: column; overflow: hidden; }
+    .view.active { display: flex; }
+    .app-header { background: var(--bg-header); color: white; padding: 12px 16px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
+    .app-header h1 { font-size: 18px; flex: 1; }
+    .header-btn { background: var(--accent); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 1; }
+    .header-btn-text { background: var(--bg-header-dark); color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+    .back-btn { background: none; border: none; color: #B5D4F4; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0; }
+    #search-bar { background: var(--bg-card); padding: 8px 12px; border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+    #search-input { width: 100%; padding: 8px 14px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg-app); color: var(--text-primary); font-size: 14px; outline: none; }
+    #search-input::placeholder { color: var(--text-timestamp); }
+    #contact-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .contact-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--border); background: var(--bg-card); cursor: pointer; }
+    .contact-row:active { background: var(--row-hover); }
+    .avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--accent-dark); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; font-weight: 500; color: white; }
+    .avatar.alt { background: var(--avatar-alt); }
+    .row-info { flex: 1; min-width: 0; }
+    .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .row-name { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+    .row-time { font-size: 11px; color: var(--text-timestamp); flex-shrink: 0; margin-left: 6px; }
+    .row-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .row-preview { font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+    .unread-badge { background: var(--accent); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; margin-left: 8px; }
+    .empty-state { text-align: center; color: var(--text-secondary); margin-top: 60px; font-size: 14px; padding: 20px; line-height: 2; }
+    #chat-area { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; -webkit-overflow-scrolling: touch; }
+    .bubble { max-width: 82%; padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.4; }
+    .bubble-original { font-size: 11px; font-style: italic; margin-bottom: 3px; }
+    .bubble-translation { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+    .bubble-time { font-size: 10px; text-align: right; }
+    .bubble-in { background: var(--bg-bubble-in); align-self: flex-start; border-bottom-left-radius: 2px; border: 0.5px solid var(--border); }
+    .bubble-in .bubble-original { color: var(--text-bubble-in-original); }
+    .bubble-in .bubble-translation { color: var(--text-bubble-in-translation); }
+    .bubble-in .bubble-time { color: var(--text-timestamp); }
+    .bubble-out { background: var(--bg-bubble-out); align-self: flex-end; border-bottom-right-radius: 2px; }
+    .bubble-out .bubble-original { color: var(--text-bubble-out-original); }
+    .bubble-out .bubble-translation { color: var(--text-bubble-out); }
+    .bubble-out .bubble-time { color: var(--text-bubble-out-original); }
+    .empty-chat { text-align: center; color: var(--text-secondary); margin-top: 40px; font-size: 14px; }
+    #message-footer { background: var(--bg-input-bar); padding: 8px 12px; display: flex; gap: 8px; align-items: center; border-top: 0.5px solid var(--border); flex-shrink: 0; }
+    .attach-btn { background: none; border: none; color: var(--text-secondary); font-size: 22px; cursor: pointer; padding: 0; flex-shrink: 0; line-height: 1; }
+    #message-input { flex: 1; padding: 9px 14px; border-radius: 20px; border: 0.5px solid var(--border); font-size: 15px; outline: none; background: var(--bg-input); color: var(--text-primary); }
+    #message-input::placeholder { color: var(--text-timestamp); }
+    #send-btn { background: var(--accent-dark); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
     .modal-overlay.active { display: flex; }
-    .modal { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; }
-    .modal h2 { font-size: 18px; margin-bottom: 16px; color: #075e54; }
-    .modal input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 12px; }
-    .modal .hint { font-size: 12px; color: #999; margin-top: -8px; margin-bottom: 12px; }
-    .modal-buttons { display: flex; gap: 8px; }
-    .btn-save { flex: 1; background: #075e54; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
-    .btn-cancel { flex: 1; background: #f0f0f0; color: #333; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
-    .btn-delete { flex: 1; background: #e74c3c; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 15px; cursor: pointer; }
-    #manage-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f0f0; z-index: 200; flex-direction: column; }
-    #manage-screen.active { display: flex; }
-    #manage-header { background: #075e54; color: white; padding: 16px; display: flex; align-items: center; gap: 12px; }
-    #manage-header h2 { font-size: 18px; flex: 1; }
-    #close-manage-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
-    #contacts-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .contact-card { background: white; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
-    .contact-info { flex: 1; }
-    .contact-name { font-size: 16px; font-weight: bold; color: #333; }
-    .contact-number { font-size: 13px; color: #888; margin-top: 2px; }
-    .contact-actions { display: flex; gap: 8px; }
-    .btn-edit { background: #128c7e; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-    .btn-del { background: #e74c3c; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-  </style>
-</head>
-<body>
-
-<div id="header">
-  <div class="header-top">
-    <h1>Beast Mode Translator</h1>
-    <div class="header-buttons">
-      <button id="manage-contacts-btn">Manage</button>
-      <button id="add-contact-btn">+ Add</button>
-    </div>
-  </div>
-  <select id="contact-select">
-    <option value="">-- Select a contact --</option>
-  </select>
-</div>
-
-<div id="chat">
-  <p class="empty">Select a contact to start translating</p>
-</div>
-
-<div id="footer">
-  <input id="message-input" type="text" placeholder="Type in English..." />
-  <button id="send-btn">&#10148;</button>
-</div>
-
-<!-- Add Contact Modal -->
-<div id="add-modal" class="modal-overlay">
-  <div class="modal">
-    <h2>Add New Contact</h2>
-    <input id="new-name" type="text" placeholder="Contact name (e.g. Juan)" />
-    <input id="new-number" type="tel" placeholder="Phone number (e.g. +15551234567)" />
-    <p class="hint">Include country code. US: +1, Mexico: +52</p>
-    <div class="modal-buttons">
-      <button class="btn-cancel" id="add-cancel">Cancel</button>
-      <button class="btn-save" id="add-save">Save Contact</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit Contact Modal -->
-<div id="edit-modal" class="modal-overlay">
-  <div class="modal">
-    <h2>Edit Contact</h2>
-    <input id="edit-name" type="text" placeholder="Contact name" />
-    <input id="edit-number" type="tel" placeholder="Phone number" />
-    <p class="hint">Include country code. US: +1, Mexico: +52</p>
-    <div class="modal-buttons">
-      <button class="btn-cancel" id="edit-cancel">Cancel</button>
-      <button class="btn-save" id="edit-save">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- Manage Contacts Screen -->
-<div id="manage-screen">
-  <div id="manage-header">
-    <button id="close-manage-btn">&#8592;</button>
-    <h2>Manage Contacts</h2>
-  </div>
-  <div id="contacts-list"></div>
-</div>
-
-<script>
-  const contactSelect = document.getElementById('contact-select');
-  const chat = document.getElementById('chat');
-  const messageInput = document.getElementById('message-input');
-  const sendBtn = document.getElementById('send-btn');
-  const addContactBtn = document.getElementById('add-contact-btn');
-  const manageContactsBtn = document.getElementById('manage-contacts-btn');
-  const addModal = document.getElementById('add-modal');
-  const editModal = document.getElementById('edit-modal');
-  const manageScreen = document.getElementById('manage-screen');
-  const contactsList = document.getElementById('contacts-list');
-
-  let allMessages = [];
-  let lastMessageCount = 0;
-  let selectedNumber = '';
-  let contacts = [];
-  let unreadCounts = {};
-  let editingOldNumber = '';
-
-  // Fix viewport height on mobile
-  function setVH() {
-    let vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
-    document.body.style.height = window.innerHeight + 'px';
-  }
-  setVH();
-  window.addEventListener('resize', setVH);
-
-  async function loadContacts() {
-    const res = await fetch('/contacts');
-    contacts = await res.json();
-    rebuildDropdown();
-  }
-
-  function rebuildDropdown() {
-    const current = selectedNumber;
-    contactSelect.innerHTML = '<option value="">-- Select a contact --</option>';
-    contacts.forEach(c => {
-      if (!unreadCounts[c.number]) unreadCounts[c.number] = 0;
-      const opt = document.createElement('option');
-      opt.value = c.number;
-      const count = unreadCounts[c.number] || 0;
-      opt.textContent = count > 0 ? `${c.name} (${count} new)` : c.name;
-      contactSelect.appendChild(opt);
-    });
-    if (current) contactSelect.value = current;
-  }
-
-  function getContactName(number) {
-    const clean = number.replace('whatsapp:', '');
-    const contact = contacts.find(c => c.number === clean);
-    return contact ? contact.name : number;
-  }
-
-  function renderContactsList() {
-    contactsList.innerHTML = '';
-    if (contacts.length === 0) {
-      contactsList.innerHTML = '<p style="text-align:center;color:#999;margin-top:40px">No contacts yet. Tap + Add to add one.</p>';
-      return;
-    }
-    contacts.forEach(c => {
-      const card = document.createElement('div');
-      card.className = 'contact-card';
-      card.innerHTML = `
-        <div class="contact-info">
-          <div class="contact-name">${c.name}</div>
-          <div class="contact-number">${c.number}</div>
-        </div>
-        <div class="contact-actions">
-          <button class="btn-edit" onclick="openEdit('${c.name}', '${c.number}')">Edit</button>
-          <button class="btn-del" onclick="deleteContact('${c.number}', '${c.name}')">Delete</button>
-        </div>`;
-      contactsList.appendChild(card);
-    });
-  }
-
-  addContactBtn.addEventListener('click', () => {
-    document.getElementById('new-name').value = '';
-    document.getElementById('new-number').value = '';
-    addModal.classList.add('active');
-  });
-  document.getElementById('add-cancel').addEventListener('click', () => addModal.classList.remove('active'));
-  document.getElementById('add-save').addEventListener('click', async () => {
-    const name = document.getElementById('new-name').value.trim();
-    const number = document.getElementById('new-number').value.trim();
-    if (!name || !number) { alert('Please enter both a name and phone number.'); return; }
-    if (!number.startsWith('+')) { alert('Phone number must start with + and country code.'); return; }
-    const res = await fetch('/contacts/add', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, number })
-    });
-    const data = await res.json();
-    if (data.success) {
-      contacts.push({ name, number });
-      unreadCounts[number] = 0;
-      rebuildDropdown();
-      renderContactsList();
-      addModal.classList.remove('active');
-    } else { alert('Error saving contact.'); }
-  });
-
-  function openEdit(name, number) {
-    editingOldNumber = number;
-    document.getElementById('edit-name').value = name;
-    document.getElementById('edit-number').value = number;
-    editModal.classList.add('active');
-  }
-  document.getElementById('edit-cancel').addEventListener('click', () => editModal.classList.remove('active'));
-  document.getElementById('edit-save').addEventListener('click', async () => {
-    const name = document.getElementById('edit-name').value.trim();
-    const number = document.getElementById('edit-number').value.trim();
-    if (!name || !number) { alert('Please enter both a name and phone number.'); return; }
-    const res = await fetch('/contacts/edit', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldNumber: editingOldNumber, name, number })
-    });
-    const data = await res.json();
-    if (data.success) {
-      const index = contacts.findIndex(c => c.number === editingOldNumber);
-      if (index !== -1) contacts[index] = { name, number };
-      rebuildDropdown();
-      renderContactsList();
-      editModal.classList.remove('active');
-    } else { alert('Error updating contact.'); }
-  });
-
-  async function deleteContact(number, name) {
-    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
-    const res = await fetch('/contacts/delete', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number })
-    });
-    const data = await res.json();
-    if (data.success) {
-      contacts = contacts.filter(c => c.number !== number);
-      if (selectedNumber === number) selectedNumber = '';
-      rebuildDropdown();
-      renderContactsList();
-      renderMessages();
-    } else { alert('Error deleting contact.'); }
-  }
-
-  manageContactsBtn.addEventListener('click', () => {
-    renderContactsList();
-    manageScreen.classList.add('active');
-  });
-  document.getElementById('close-manage-btn').addEventListener('click', () => {
-    manageScreen.classList.remove('active');
-  });
-
-  function renderMessages() {
-    if (!selectedNumber) {
-      chat.innerHTML = '<p class="empty">Select a contact to start translating</p>';
-      return;
-    }
-    const filtered = allMessages.filter(msg => {
-      if (msg.direction === 'IN') return msg.from.replace('whatsapp:', '') === selectedNumber;
-      return msg.to === selectedNumber;
-    });
-    if (filtered.length === 0) {
-      chat.innerHTML = '<p class="empty">No messages yet with this contact.</p>';
-      return;
-    }
-    chat.innerHTML = '';
-    filtered.forEach(msg => {
-      const div = document.createElement('div');
-      if (msg.direction === 'IN') {
-        div.className = 'bubble incoming';
-        div.innerHTML = `
-          <div class="label">${getContactName(msg.from)}</div>
-          <div>${msg.translated}</div>
-          <div class="original">Original: ${msg.original}</div>
-          <div class="time">${msg.time}</div>`;
-      } else {
-        div.className = 'bubble outgoing';
-        div.innerHTML = `
-          <div class="label">You → ${getContactName(msg.to)}</div>
-          <div>${msg.original}</div>
-          <div class="original">Sent in Spanish: ${msg.translated}</div>
-          <div class="time">${msg.time}</div>`;
-      }
-      chat.appendChild(div);
-    });
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  async function loadMessages() {
-    const res = await fetch('/messages');
-    const messages = await res.json();
-    if (messages.length !== lastMessageCount) {
-      const newMsgs = messages.slice(lastMessageCount);
-      lastMessageCount = messages.length;
-      allMessages = messages;
-      newMsgs.forEach(msg => {
-        if (msg.direction === 'IN') {
-          const num = msg.from.replace('whatsapp:', '');
-          if (num !== selectedNumber) {
-            unreadCounts[num] = (unreadCounts[num] || 0) + 1;
-            rebuildDropdown();
-          }
-        }
-      });
-      renderMessages();
-    }
-  }
-
-  async function markRead(number) {
-    await fetch('/markread', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number })
-    });
-    unreadCounts[number] = 0;
-    rebuildDropdown();
-  }
-
-  contactSelect.addEventListener('change', () => {
-    selectedNumber = contactSelect.value;
-    if (selectedNumber) markRead(selectedNumber);
-    renderMessages();
-  });
-
-  sendBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
-
-  async function sendMessage() {
-    const message = messageInput.value.trim();
-    if (!message || !selectedNumber) {
-      alert(!selectedNumber ? 'Please select a contact first.' : 'Please type a message.');
-      return;
-    }
-    messageInput.value = '';
-    sendBtn.disabled = true;
-    sendBtn.classList.add('sending');
-    try {
-      await fetch('/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: selectedNumber, message })
-      });
-      await loadMessages();
-    } catch (err) {
-      alert('Error sending message. Is the server running?');
-    }
-    sendBtn.disabled = false;
-    sendBtn.classList.remove('sending');
-  }
-
-  loadContacts();
-  loadMessages();
-  setInterval(loadMessages, 3000);
-</script>
-</body>
-</html>
+    .modal { background: var(--bg-card); border-radius: 14px; padding: 20px; width: 90%; max-width: 400px; }
+    .modal h2 { font-size: 17px; margin-bottom: 14px; color: var(--text-primary); }
+    .modal-field { margin-bottom: 12px; }
+    .modal-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+    .modal-input { width: 100%; padding: 9px 12px; border: 0.5px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg-app);
