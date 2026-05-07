@@ -161,16 +161,16 @@ app.get('/contacts', async (req, res) => {
 });
 
 app.post('/contacts/add', async (req, res) => {
-  const { name, number } = req.body;
-  await db.collection('contacts').insertOne({ name, number, createdAt: new Date() });
+  const { name, number, avatar } = req.body;
+  await db.collection('contacts').insertOne({ name, number, avatar: avatar || '', createdAt: new Date() });
   res.json({ success: true });
 });
 
 app.put('/contacts/edit', async (req, res) => {
-  const { oldNumber, name, number } = req.body;
+  const { oldNumber, name, number, avatar } = req.body;
   const result = await db.collection('contacts').updateOne(
     { number: oldNumber },
-    { $set: { name, number } }
+    { $set: { name, number, avatar: avatar || '' } }
   );
   if (result.matchedCount === 0) return res.status(404).json({ error: 'Contact not found' });
   res.json({ success: true });
