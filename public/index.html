@@ -52,9 +52,9 @@
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { height: 100%; }
-    body { font-family: Arial, sans-serif; background: var(--bg-app); display: flex; flex-direction: column; overflow: hidden; }
-    .view { display: none; flex-direction: column; overflow: hidden; }
+    html, body { height: 100%; }
+    body { font-family: Arial, sans-serif; background: var(--bg-app); display: flex; flex-direction: column; overflow: hidden; height: 100dvh; }
+    .view { display: none; flex-direction: column; overflow: hidden; height: 100dvh; }
     .view.active { display: flex; }
     .app-header { background: var(--bg-header); color: white; padding: 12px 16px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
     .app-header h1 { font-size: 18px; flex: 1; }
@@ -107,7 +107,7 @@
     .modal-buttons { display: flex; gap: 8px; margin-top: 4px; }
     .btn-save { flex: 1; background: var(--accent-dark); color: white; border: none; padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
     .btn-cancel { flex: 1; background: var(--bg-app); color: var(--text-primary); border: 0.5px solid var(--border); padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
-    #manage-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; background: var(--bg-app); z-index: 200; flex-direction: column; overflow: hidden; }
+    #manage-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: var(--bg-app); z-index: 200; flex-direction: column; overflow: hidden; }
     #manage-screen.active { display: flex; }
     #manage-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
     .contact-card { background: var(--bg-card); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; border: 0.5px solid var(--border); }
@@ -121,7 +121,6 @@
 </head>
 <body>
 
-<!-- LIST VIEW -->
 <div id="list-view" class="view active">
   <div class="app-header">
     <h1>Beast Mode</h1>
@@ -134,7 +133,6 @@
   <div id="contact-list"></div>
 </div>
 
-<!-- CONVERSATION VIEW -->
 <div id="convo-view" class="view">
   <div class="app-header">
     <button class="back-btn" id="back-btn">&#8592;</button>
@@ -149,7 +147,6 @@
   </div>
 </div>
 
-<!-- ADD MODAL -->
 <div id="add-modal" class="modal-overlay">
   <div class="modal">
     <h2>Add Contact</h2>
@@ -174,7 +171,6 @@
   </div>
 </div>
 
-<!-- EDIT MODAL -->
 <div id="edit-modal" class="modal-overlay">
   <div class="modal">
     <h2>Edit Contact</h2>
@@ -198,7 +194,6 @@
   </div>
 </div>
 
-<!-- MANAGE SCREEN -->
 <div id="manage-screen">
   <div class="app-header">
     <button class="back-btn" id="close-manage-btn">&#8592;</button>
@@ -214,15 +209,6 @@
   let selectedNumber = '';
   let editingOldNumber = '';
   let unreadCounts = {};
-
-  function fixHeight() {
-    const h = window.innerHeight + 'px';
-    document.body.style.height = h;
-    document.querySelectorAll('.view').forEach(v => v.style.height = h);
-    document.getElementById('manage-screen').style.height = h;
-  }
-  fixHeight();
-  window.addEventListener('resize', fixHeight);
 
   function getInitials(name) {
     return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
@@ -284,60 +270,58 @@
       return 0;
     });
     if (sorted.length === 0) {
-      list.innerHTML = `<p class="empty-state">${contacts.length === 0 ? 'No contacts yet.<br>Tap + to add your first contact.' : 'No contacts match your search.'}</p>`;
+      list.innerHTML = '<p class="empty-state">' + (contacts.length === 0 ? 'No contacts yet.<br>Tap + to add your first contact.' : 'No contacts match your search.') + '</p>';
       return;
     }
     list.innerHTML = '';
-    sorted.forEach((c, i) => {
+    sorted.forEach(function(c, i) {
       const lastMsg = getLastMessage(c.number);
       const unread = unreadCounts[c.number] || 0;
-      const preview = lastMsg
-        ? (lastMsg.direction === 'IN' ? lastMsg.translated : lastMsg.original)
-        : 'Tap to start messaging';
+      const preview = lastMsg ? (lastMsg.direction === 'IN' ? lastMsg.translated : lastMsg.original) : 'Tap to start messaging';
       const row = document.createElement('div');
       row.className = 'contact-row';
-      row.innerHTML = `
-        <div class="avatar ${i % 2 === 1 ? 'alt' : ''}">${getAvatar(c)}</div>
-        <div class="row-info">
-          <div class="row-top">
-            <span class="row-name">${c.name}</span>
-            <span class="row-time">${formatTime(lastMsg)}</span>
-          </div>
-          <div class="row-bottom">
-            <span class="row-preview">${preview}</span>
-            ${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}
-          </div>
-        </div>`;
-      row.addEventListener('click', () => showConversation(c.number));
+      row.innerHTML =
+        '<div class="avatar ' + (i % 2 === 1 ? 'alt' : '') + '">' + getAvatar(c) + '</div>' +
+        '<div class="row-info">' +
+          '<div class="row-top">' +
+            '<span class="row-name">' + c.name + '</span>' +
+            '<span class="row-time">' + formatTime(lastMsg) + '</span>' +
+          '</div>' +
+          '<div class="row-bottom">' +
+            '<span class="row-preview">' + preview + '</span>' +
+            (unread > 0 ? '<div class="unread-badge">' + unread + '</div>' : '') +
+          '</div>' +
+        '</div>';
+      row.addEventListener('click', function() { showConversation(c.number); });
       list.appendChild(row);
     });
   }
 
   function renderConversation() {
     const chat = document.getElementById('chat-area');
-    const msgs = allMessages.filter(m =>
-      (m.direction === 'IN' && m.from.replace('whatsapp:', '') === selectedNumber) ||
-      (m.direction === 'OUT' && m.to === selectedNumber)
-    );
+    const msgs = allMessages.filter(function(m) {
+      return (m.direction === 'IN' && m.from.replace('whatsapp:', '') === selectedNumber) ||
+             (m.direction === 'OUT' && m.to === selectedNumber);
+    });
     if (msgs.length === 0) {
       chat.innerHTML = '<p class="empty-chat">No messages yet.<br>Type below to send a translated message.</p>';
       return;
     }
     chat.innerHTML = '';
-    msgs.forEach(msg => {
+    msgs.forEach(function(msg) {
       const div = document.createElement('div');
       if (msg.direction === 'IN') {
         div.className = 'bubble bubble-in';
-        div.innerHTML = `
-          <div class="bubble-original">${msg.original}</div>
-          <div class="bubble-translation">${msg.translated}</div>
-          <div class="bubble-time">${msg.time}</div>`;
+        div.innerHTML =
+          '<div class="bubble-original">' + msg.original + '</div>' +
+          '<div class="bubble-translation">' + msg.translated + '</div>' +
+          '<div class="bubble-time">' + msg.time + '</div>';
       } else {
         div.className = 'bubble bubble-out';
-        div.innerHTML = `
-          <div class="bubble-translation">${msg.original}</div>
-          <div class="bubble-original">${msg.translated}</div>
-          <div class="bubble-time">${msg.time} ✓✓</div>`;
+        div.innerHTML =
+          '<div class="bubble-translation">' + msg.original + '</div>' +
+          '<div class="bubble-original">' + msg.translated + '</div>' +
+          '<div class="bubble-time">' + msg.time + ' \u2713\u2713</div>';
       }
       chat.appendChild(div);
     });
@@ -345,10 +329,12 @@
   }
 
   async function loadContacts() {
-    const res = await fetch('/contacts');
-    contacts = await res.json();
-    contacts.forEach(c => { if (!unreadCounts[c.number]) unreadCounts[c.number] = 0; });
-    renderList();
+    try {
+      const res = await fetch('/contacts');
+      contacts = await res.json();
+      contacts.forEach(function(c) { if (!unreadCounts[c.number]) unreadCounts[c.number] = 0; });
+      renderList();
+    } catch(e) { console.error('loadContacts error', e); }
   }
 
   function renderManageList() {
@@ -358,45 +344,44 @@
       return;
     }
     list.innerHTML = '';
-    contacts.forEach((c, i) => {
+    contacts.forEach(function(c, i) {
       const card = document.createElement('div');
       card.className = 'contact-card';
-      card.innerHTML = `
-        <div class="avatar ${i % 2 === 1 ? 'alt' : ''}" style="width:40px;height:40px;font-size:14px;">${getAvatar(c)}</div>
-        <div class="card-info">
-          <div class="card-name">${c.name}</div>
-          <div class="card-number">${c.number}</div>
-        </div>
-        <div class="card-actions">
-          <button class="btn-edit-sm" onclick="openEdit('${c.name}','${c.number}','${(c.avatar||'').replace(/'/g,"\\'")}')">Edit</button>
-          <button class="btn-del-sm" onclick="deleteContact('${c.number}','${c.name}')">Delete</button>
-        </div>`;
+      card.innerHTML =
+        '<div class="avatar ' + (i % 2 === 1 ? 'alt' : '') + '" style="width:40px;height:40px;font-size:14px;">' + getAvatar(c) + '</div>' +
+        '<div class="card-info">' +
+          '<div class="card-name">' + c.name + '</div>' +
+          '<div class="card-number">' + c.number + '</div>' +
+        '</div>' +
+        '<div class="card-actions">' +
+          '<button class="btn-edit-sm" onclick="openEdit(\'' + c.name.replace(/'/g,"\\'") + '\',\'' + c.number + '\',\'' + (c.avatar||'').replace(/'/g,"\\'") + '\')">Edit</button>' +
+          '<button class="btn-del-sm" onclick="deleteContact(\'' + c.number + '\',\'' + c.name.replace(/'/g,"\\'") + '\')">Delete</button>' +
+        '</div>';
       list.appendChild(card);
     });
   }
 
-  document.getElementById('add-btn').addEventListener('click', () => {
-    ['new-name','new-number','new-avatar'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('add-btn').addEventListener('click', function() {
+    ['new-name','new-number','new-avatar'].forEach(function(id) { document.getElementById(id).value = ''; });
     document.getElementById('add-modal').classList.add('active');
   });
-  document.getElementById('add-cancel').addEventListener('click', () => document.getElementById('add-modal').classList.remove('active'));
-  document.getElementById('add-save').addEventListener('click', async () => {
+  document.getElementById('add-cancel').addEventListener('click', function() { document.getElementById('add-modal').classList.remove('active'); });
+  document.getElementById('add-save').addEventListener('click', async function() {
     const name = document.getElementById('new-name').value.trim();
     const number = document.getElementById('new-number').value.trim();
     const avatar = document.getElementById('new-avatar').value.trim();
     if (!name || !number) { alert('Please enter both name and phone number.'); return; }
     if (!number.startsWith('+')) { alert('Phone number must start with + and country code.'); return; }
-    const res = await fetch('/contacts/add', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, number, avatar })
-    });
-    const data = await res.json();
-    if (data.success) {
-      contacts.push({ name, number, avatar });
-      unreadCounts[number] = 0;
-      document.getElementById('add-modal').classList.remove('active');
-      renderList();
-    } else { alert('Error saving contact.'); }
+    try {
+      const res = await fetch('/contacts/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name,number,avatar}) });
+      const data = await res.json();
+      if (data.success) {
+        contacts.push({name,number,avatar});
+        unreadCounts[number] = 0;
+        document.getElementById('add-modal').classList.remove('active');
+        renderList();
+      } else { alert('Error saving contact.'); }
+    } catch(e) { alert('Error saving contact.'); }
   });
 
   function openEdit(name, number, avatar) {
@@ -406,79 +391,78 @@
     document.getElementById('edit-avatar').value = avatar || '';
     document.getElementById('edit-modal').classList.add('active');
   }
-  document.getElementById('edit-cancel').addEventListener('click', () => document.getElementById('edit-modal').classList.remove('active'));
-  document.getElementById('edit-save').addEventListener('click', async () => {
+  document.getElementById('edit-cancel').addEventListener('click', function() { document.getElementById('edit-modal').classList.remove('active'); });
+  document.getElementById('edit-save').addEventListener('click', async function() {
     const name = document.getElementById('edit-name').value.trim();
     const number = document.getElementById('edit-number').value.trim();
     const avatar = document.getElementById('edit-avatar').value.trim();
     if (!name || !number) { alert('Please enter both name and phone number.'); return; }
-    const res = await fetch('/contacts/edit', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldNumber: editingOldNumber, name, number, avatar })
-    });
-    const data = await res.json();
-    if (data.success) {
-      const idx = contacts.findIndex(c => c.number === editingOldNumber);
-      if (idx !== -1) contacts[idx] = { name, number, avatar };
-      document.getElementById('edit-modal').classList.remove('active');
-      renderList();
-      renderManageList();
-    } else { alert('Error updating contact.'); }
+    try {
+      const res = await fetch('/contacts/edit', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({oldNumber:editingOldNumber,name,number,avatar}) });
+      const data = await res.json();
+      if (data.success) {
+        const idx = contacts.findIndex(function(c) { return c.number === editingOldNumber; });
+        if (idx !== -1) contacts[idx] = {name,number,avatar};
+        document.getElementById('edit-modal').classList.remove('active');
+        renderList();
+        renderManageList();
+      } else { alert('Error updating contact.'); }
+    } catch(e) { alert('Error updating contact.'); }
   });
 
   async function deleteContact(number, name) {
-    if (!confirm(`Delete ${name}?`)) return;
-    const res = await fetch('/contacts/delete', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number })
-    });
-    const data = await res.json();
-    if (data.success) {
-      contacts = contacts.filter(c => c.number !== number);
-      renderList();
-      renderManageList();
-    }
+    if (!confirm('Delete ' + name + '?')) return;
+    try {
+      const res = await fetch('/contacts/delete', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({number}) });
+      const data = await res.json();
+      if (data.success) {
+        contacts = contacts.filter(function(c) { return c.number !== number; });
+        renderList();
+        renderManageList();
+      }
+    } catch(e) { alert('Error deleting contact.'); }
   }
 
-  document.getElementById('manage-btn').addEventListener('click', () => {
+  document.getElementById('manage-btn').addEventListener('click', function() {
     renderManageList();
     document.getElementById('manage-screen').classList.add('active');
   });
-  document.getElementById('close-manage-btn').addEventListener('click', () => {
+  document.getElementById('close-manage-btn').addEventListener('click', function() {
     document.getElementById('manage-screen').classList.remove('active');
   });
 
   async function loadMessages() {
-    const res = await fetch('/messages');
-    const messages = await res.json();
-    if (messages.length !== lastMessageCount) {
-      const newMsgs = messages.slice(lastMessageCount);
-      lastMessageCount = messages.length;
-      allMessages = messages;
-      newMsgs.forEach(msg => {
-        if (msg.direction === 'IN') {
-          const num = msg.from.replace('whatsapp:', '');
-          if (num !== selectedNumber) {
-            unreadCounts[num] = (unreadCounts[num] || 0) + 1;
+    try {
+      const res = await fetch('/messages');
+      const messages = await res.json();
+      if (messages.length !== lastMessageCount) {
+        const newMsgs = messages.slice(lastMessageCount);
+        lastMessageCount = messages.length;
+        allMessages = messages;
+        newMsgs.forEach(function(msg) {
+          if (msg.direction === 'IN') {
+            const num = msg.from.replace('whatsapp:', '');
+            if (num !== selectedNumber) {
+              unreadCounts[num] = (unreadCounts[num] || 0) + 1;
+            }
           }
-        }
-      });
-      if (selectedNumber) renderConversation();
-      else renderList();
-    }
+        });
+        if (selectedNumber) renderConversation();
+        else renderList();
+      }
+    } catch(e) { console.error('loadMessages error', e); }
   }
 
   async function markRead(number) {
-    await fetch('/markread', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number })
-    });
-    unreadCounts[number] = 0;
-    renderList();
+    try {
+      await fetch('/markread', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({number}) });
+      unreadCounts[number] = 0;
+      renderList();
+    } catch(e) {}
   }
 
   document.getElementById('send-btn').addEventListener('click', sendMessage);
-  document.getElementById('message-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+  document.getElementById('message-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
 
   async function sendMessage() {
     const message = document.getElementById('message-input').value.trim();
@@ -489,12 +473,10 @@
     document.getElementById('message-input').value = '';
     document.getElementById('send-btn').disabled = true;
     try {
-      await fetch('/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: selectedNumber, message })
-      });
+      await fetch('/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({to:selectedNumber,message}) });
       await loadMessages();
-    } catch (err) { alert('Error sending message.'); }
+      document.getElementById('chat-area').scrollTop = document.getElementById('chat-area').scrollHeight;
+    } catch(e) { alert('Error sending message.'); }
     document.getElementById('send-btn').disabled = false;
   }
 
